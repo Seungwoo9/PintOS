@@ -24,6 +24,11 @@
    that are ready to run but not actually running. */
 static struct list ready_list;
 
+// Define Sleep Queue
+//@@@@@@@@@@@@@ PJT1 @@@@@@@@@@@@@@
+static struct list sleep_list;
+static int64_t min_value_of_ticks;
+//@@@@@@@@@@@@@ PJT1 @@@@@@@@@@@@@@
 /* List of all processes.  Processes are added to this list
    when they are first scheduled and removed when they exit. */
 static struct list all_list;
@@ -49,6 +54,7 @@ struct kernel_thread_frame
 static long long idle_ticks;    /* # of timer ticks spent idle. */
 static long long kernel_ticks;  /* # of timer ticks in kernel threads. */
 static long long user_ticks;    /* # of timer ticks in user programs. */
+
 
 /* Scheduling. */
 #define TIME_SLICE 4            /* # of timer ticks to give each thread. */
@@ -93,7 +99,8 @@ thread_init (void)
   lock_init (&tid_lock);
   list_init (&ready_list);
   list_init (&all_list);
-
+  list_init (&sleep_list);
+  min_value_of_ticks = INT64_MAX;
   /* Set up a thread structure for the running thread. */
   initial_thread = running_thread ();
   init_thread (initial_thread, "main", PRI_DEFAULT);
@@ -583,3 +590,56 @@ allocate_tid (void)
 /* Offset of `stack' member within `struct thread'.
    Used by switch.S, which can't figure it out on its own. */
 uint32_t thread_stack_ofs = offsetof (struct thread, stack);
+
+void
+thread_sleep(int64_t ticks){
+	struct thread* curr = thread_current();
+	enum intr_level old_level;
+	ASSERT(!intr_context());
+	old_level = intr_disable();
+
+	curr->wake_up_tick = ticks;
+
+	if(curr != idle_thread)
+	{
+		list_push_back(&sleep_list, &curr->elem);
+	}
+
+	save_the_min_value(ticks);
+	curr->status = THREAD_BLOCKED;
+	schedule();
+	// thread state has to be BLOCKED	
+	intr_set_level(eld-level);
+}
+void
+thread_awake(int64_t ticks){
+	min_value_of_ticks = INT64_MAX;
+	struct thread* t;
+	
+	for(struct list_elem *e = list_begin(&sleep_list); e != list_end(&sleep_list);)
+	{
+		t = list_entry(e, struct thread, elem);
+		if (t->wake_up_tick <= ticks)
+		{
+			e = list_remove(&t->elem);
+			thread_unblock(t);
+		}
+		else
+		{
+			save_min_value_of_ticks(t->wake_up_tick);
+			e = list_next(e);
+		}
+	}	
+	// sleep list check
+}
+
+void
+save_min_value_of_ticks(int64_t ticks){
+	min_value_of_ticks = MIN(min_value_of_ticks, ticks);
+}
+
+int64_t
+get_min_value_of_ticks(){
+	return min_value_of_ticks;
+}
+
