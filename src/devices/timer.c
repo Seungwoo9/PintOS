@@ -92,8 +92,12 @@ timer_sleep (int64_t ticks)
   int64_t start = timer_ticks ();
 
   ASSERT (intr_get_level () == INTR_ON);
+  /*
   while (timer_elapsed (start) < ticks) 
     thread_yield ();
+  */
+  if(timer_elapsed (start) < ticks)
+	thread_sleep (start + ticks); // need to implement
 }
 
 /* Sleeps for approximately MS milliseconds.  Interrupts must be
@@ -171,7 +175,14 @@ static void
 timer_interrupt (struct intr_frame *args UNUSED)
 {
   ticks++;
-  thread_tick ();
+  thread_tick (); //update the cpu usage for running process
+  //int64_t next_tick = get_min_value_of_ticks; //in case that i have to use varaible.
+  //check sleep list and global tick. & find any threads to wake up.
+  if(ticks >= get_min_value_of_ticks()){
+	thread_awake(ticks);
+  }
+  //move them to the ready_list --> thread_awkae
+  //update the global tick
 }
 
 /* Returns true if LOOPS iterations waits for more than one timer
