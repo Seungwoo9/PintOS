@@ -39,6 +39,8 @@ SEUNGWOO PARK <merleawe@kaist.ac.kr>
 @threads/thread.c
 2. static struct list sleep_list
     sleep_queue를 만들어 줌
+3. static int64_t min_value_of_ticks;
+    sleep_list 내부의 thread 들의 wake_up_tick 중 가장 작은 값을 저장하여, 이 이상의 tick에서 thread_awake가 일어나도록 함.
     
 
 ---- ALGORITHMS ----
@@ -53,6 +55,8 @@ timer_interrupt에서, wake_up_tick 중에서 가장 낮은 값보다 tick이 �
 >> the timer interrupt handler?
 
 sleep_list를 wake_up_tick의 순서대로 정렬해서 넣음으로써, timer_interrupt_handler에서의 시간을 최소화 시킴.
+거기에 더하여, min_value_of_ticks에 sleep_list 내부 thread 들 중 가장 작은 wake_up_tick 값을 저장하여, 이 이상의 tick 에서만 thread_awake가 일어나게 하여
+timer_interrupt handler에서 시간 소모를 최소화 함.
 
 
 ---- SYNCHRONIZATION ----
