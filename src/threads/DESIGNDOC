@@ -39,31 +39,42 @@ SEUNGWOO PARK <merleawe@kaist.ac.kr>
 @threads/thread.c
 2. static struct list sleep_list
     sleep_queue를 만들어 줌
-3. static int64_t min_value_of_ticks;
-    sleep_list 내의 thread의 wake_up_tick 중 가장 작은 값을 저장해, 깨워줘야하는 첫 tick 값을 저장
+    
 
 ---- ALGORITHMS ----
 
 >> A2: Briefly describe what happens in a call to timer_sleep(),
 >> including the effects of the timer interrupt handler.
 
-timer_sleep() 함수가 call 되면, 
+timer_sleep() 함수가 call 되면, thread는 target으로 하는 wake_up_tick값을 가지고, sleep_list로 넣어지고, BlOCKED STATE가 됨
+timer_interrupt에서, wake_up_tick 중에서 가장 낮은 값보다 tick이 크면, thread_awake를 실행하며, thread 별로 주어진 wake_up_tick 값에 부합하면, thread를 깨움.
 
 >> A3: What steps are taken to minimize the amount of time spent in
 >> the timer interrupt handler?
+
+sleep_list를 wake_up_tick의 순서대로 정렬해서 넣음으로써, timer_interrupt_handler에서의 시간을 최소화 시킴.
+
 
 ---- SYNCHRONIZATION ----
 
 >> A4: How are race conditions avoided when multiple threads call
 >> timer_sleep() simultaneously?
 
+
+
 >> A5: How are race conditions avoided when a timer interrupt occurs
 >> during a call to timer_sleep()?
+
+
 
 ---- RATIONALE ----
 
 >> A6: Why did you choose this design?  In what ways is it superior to
 >> another design you considered?
+
+busy-waiting의 경우, 매우 비효율 적으로 진행이 되어, 많은 시간을 낭비하게 됨.
+따라서, busy-waiting 말고, sleep/wakeup 으로 만들어 줌.
+
 
              PRIORITY SCHEDULING
              ===================
