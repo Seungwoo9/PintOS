@@ -126,7 +126,6 @@ timer_nsleep(int64_t ns)
 
 /* Busy-waits for approximately MS milliseconds.  Interrupts need
    not be turned on.
-
    Busy waiting wastes CPU cycles, and busy waiting with
    interrupts off for the interval between timer ticks or longer
    will cause timer ticks to be lost.  Thus, use timer_msleep()
@@ -139,7 +138,6 @@ timer_mdelay(int64_t ms)
 
 /* Sleeps for approximately US microseconds.  Interrupts need not
    be turned on.
-
    Busy waiting wastes CPU cycles, and busy waiting with
    interrupts off for the interval between timer ticks or longer
    will cause timer ticks to be lost.  Thus, use timer_usleep()
@@ -152,7 +150,6 @@ timer_udelay(int64_t us)
 
 /* Sleeps execution for approximately NS nanoseconds.  Interrupts
    need not be turned on.
-
    Busy waiting wastes CPU cycles, and busy waiting with
    interrupts off for the interval between timer ticks or longer
    will cause timer ticks to be lost.  Thus, use timer_nsleep()
@@ -176,20 +173,20 @@ timer_interrupt(struct intr_frame* args UNUSED)
 {
     ticks++;
     //PJT1-4
-    if(thread_report_latency) count_latency();
+    if (thread_report_latency) count_latency();
     thread_tick(); //update the cpu usage for running process
     //int64_t next_tick = get_min_value_of_ticks; //in case that i have to use varaible.
-   
+
     //PJT1-3
-    if(thread_mlfqs){
-	    increment_recent_cpu();
-	    if(ticks %4 ==0)
-		    recal_priority();
-	    if(ticks % TIMER_FREQ ==0) {
-		    recal_recent_cpu();
-		    cal_load_avg();
-	    }
-	   
+    if (thread_mlfqs) {
+        increment_recent_cpu();
+        if (ticks % 4 == 0)
+            recal_priority();
+        if (ticks % TIMER_FREQ == 0) {
+            recal_recent_cpu();
+            cal_load_avg();
+        }
+
     }
     //check sleep list and global tick. & find any threads to wake up.
     //PJT1-1
@@ -197,7 +194,7 @@ timer_interrupt(struct intr_frame* args UNUSED)
         thread_awake(ticks);
     }
 
-    
+
     //move them to the ready_list --> thread_awake
     //update the global tick
 }
@@ -223,7 +220,6 @@ too_many_loops(unsigned loops)
 
 /* Iterates through a simple loop LOOPS times, for implementing
    brief delays.
-
    Marked NO_INLINE because code alignment can significantly
    affect timings, so that if this function was inlined
    differently in different places the results would be difficult
@@ -240,7 +236,6 @@ static void
 real_time_sleep(int64_t num, int32_t denom)
 {
     /* Convert NUM/DENOM seconds into timer ticks, rounding down.
-
           (NUM / DENOM) s
        ---------------------- = NUM * TIMER_FREQ / DENOM ticks.
        1 s / TIMER_FREQ ticks
