@@ -186,13 +186,15 @@ lock의 holder를 비워주고, sema_up을 이용해 semaphore를 재정비 해�
 >> how your implementation avoids it.  Can you use a lock to avoid
 >> this race?
 
-
+thread_set_priority 함수 안에서,
+refresh_priority를 통해서, 다시 한 번 더, priority 순서대로 정렬을 해줌.
 
 ---- RATIONALE ----
 
 >> B7: Why did you choose this design?  In what ways is it superior to
 >> another design you considered?
 
+OS를 처음 접하기에, 직관적으로 알아보기 쉬운 구조로 design하게 되었음.
 
 
               ADVANCED SCHEDULER
@@ -204,6 +206,23 @@ lock의 holder를 비워주고, sema_up을 이용해 semaphore를 재정비 해�
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
+@threads/thread.h
+struct thread
+{
+     ...
+     
+    //PJT1-3
+    int nice;           <-- thread의 nice 값을 저장하기 위함
+    int recent_cpu;     <-- thread의 recent_cpu 값을 저장
+    //PJT1-3 END
+    
+     ...
+};
+
+@threads/thread.c
+int load_avg;           <-- load_avg 저장하기 위한 전역 변수
+
+
 ---- ALGORITHMS ----
 
 >> C2: Suppose threads A, B, and C have nice values 0, 1, and 2.  Each
@@ -211,26 +230,35 @@ lock의 holder를 비워주고, sema_up을 이용해 semaphore를 재정비 해�
 >> scheduling decision and the priority and recent_cpu values for each
 >> thread after each given number of timer ticks:
 
+100tick에 1초이므로, 초에 의한 것은 생각 X load_avg=0
+
 timer  recent_cpu    priority   thread
 ticks   A   B   C   A   B   C   to run
 -----  --  --  --  --  --  --   ------
- 0
- 4
- 8
-12
-16
-20
-24
-28
-32
-36
+ 0      0   1   2  63  61  59   A
+ 4      4   1   2  62  61  59   A
+ 8      8   1   2  61  61  59   A
+12     12   1   2  60  61  59   B
+16     12   5   2  60  60  59   A
+20     16   5   2  59  60  59   B
+24     16   9   2  59  59  59   A
+28     20   9   2  58  59  59   B
+32     20  13   2  58  58  59   C
+36     20  13   6  58  58  58   A
 
 >> C3: Did any ambiguities in the scheduler specification make values
 >> in the table uncertain?  If so, what rule did you use to resolve
 >> them?  Does this match the behavior of your scheduler?
 
+우선, 100tick에 1초로 계산하여, 초당 계산하는 것이 없었고, load_avg가 0일 때를 가정함.
+priority가 같아지는 경우가 생겨 모호해졌으며, 이 경우, nice의 정의를 따라 덜 nice한 것이 run되도록 하였음.
+
+
 >> C4: How is the way you divided the cost of scheduling between code
 >> inside and outside interrupt context likely to affect performance?
+
+load_avg나 recent_cpu 계산에 너무 많은 시간을 소모하게 되면, 결국 load_avg를 높이고 recent_cpu 값을 높이는 등의 악순환이 생길 것.
+
 
 ---- RATIONALE ----
 
@@ -239,12 +267,22 @@ ticks   A   B   C   A   B   C   to run
 >> time to work on this part of the project, how might you choose to
 >> refine or improve your design?
 
+int를 가지고 fixed_point 계산식을 구현하여, recent_cpu , load_avg 등의 실수도 같이 표현할 수 있게함.
+priority 및 nice, load_avg, recent_cpu를 이용하여 계산을 진행하고, 조절된 priority를 가지고 4.4BSD scheduler를 구현
+
+시간이 더 있다면, multi-level queue에 대해 좀 더 공부하고 적용해보고 싶음.
+
 >> C6: The assignment explains arithmetic for fixed-point math in
 >> detail, but it leaves it open to you to implement it.  Why did you
 >> decide to implement it the way you did?  If you created an
 >> abstraction layer for fixed-point math, that is, an abstract data
 >> type and/or a set of functions or macros to manipulate fixed-point
 >> numbers, why did you do so?  If not, why not?
+
+앞서 언급한 것처럼, load_avg 및 recent_cpu값은 실수 형태이다.
+pintos에서 floating point 수를 구현하기 위해서, int형을 통하여 fixed_point.h 파일에 구현을 하였음.
+
+#define macro를 통하여, MIN, MAX 값과 정수 1을 구현하였으며, inline fuction 보다 빠르게 동작할 수 있음.
 
                SURVEY QUESTIONS
                ================
@@ -258,7 +296,7 @@ the quarter.
 >> In your opinion, was this assignment, or any one of the three problems
 >> in it, too easy or too hard?  Did it take too long or too little time?
 
-혼자하기 어려웠으며, 오래걸렸습니다...
+혼자하기 어려웠으며, 굉장히 오래걸렸습니다...
 
 >> Did you find that working on a particular part of the assignment gave
 >> you greater insight into some aspect of OS design?
