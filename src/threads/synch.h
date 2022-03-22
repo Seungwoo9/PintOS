@@ -2,6 +2,7 @@
 #define THREADS_SYNCH_H
 
 #include <list.h>
+#include <debug.h> //PJT1-2 for use UNUSED form
 #include <stdbool.h>
 
 /* A counting semaphore. */
@@ -16,7 +17,9 @@ void sema_down (struct semaphore *);
 bool sema_try_down (struct semaphore *);
 void sema_up (struct semaphore *);
 void sema_self_test (void);
-
+//PJT1-2
+bool sema_cmp_priority (const struct list_elem *l, const struct list_elem *s, void *aux UNUSED);
+//PJT1-2 END
 /* Lock. */
 struct lock 
   {
