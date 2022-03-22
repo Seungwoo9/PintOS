@@ -27,13 +27,11 @@ typedef int tid_t;
 #define RECENT_CPU_DEFAULT 0
 #define LOAD_AVG_DEFAULT 0
 /* A kernel thread or user process.
-
    Each thread structure is stored in its own 4 kB page.  The
    thread structure itself sits at the very bottom of the page
    (at offset 0).  The rest of the page is reserved for the
    thread's kernel stack, which grows downward from the top of
    the page (at offset 4 kB).  Here's an illustration:
-
         4 kB +---------------------------------+
              |          kernel stack           |
              |                |                |
@@ -55,22 +53,18 @@ typedef int tid_t;
              |               name              |
              |              status             |
         0 kB +---------------------------------+
-
    The upshot of this is twofold:
-
       1. First, `struct thread' must not be allowed to grow too
          big.  If it does, then there will not be enough room for
          the kernel stack.  Our base `struct thread' is only a
          few bytes in size.  It probably should stay well under 1
          kB.
-
       2. Second, kernel stacks must not be allowed to grow too
          large.  If a stack overflows, it will corrupt the thread
          state.  Thus, kernel functions should not allocate large
          structures or arrays as non-static local variables.  Use
          dynamic allocation with malloc() or palloc_get_page()
          instead.
-
    The first symptom of either of these problems will probably be
    an assertion failure in thread_current(), which checks that
    the `magic' member of the running thread's `struct thread' is
@@ -160,20 +154,21 @@ int thread_get_load_avg(void);
 //PJT1-1 new functions
 void thread_sleep(int64_t ticks);
 void thread_awake(int64_t ticks);
-void save_the_min_value(int64_t ticks);
+void save_the_min_value();
 int64_t get_min_value_of_ticks(void);
+bool cmp_wake_up_tick(const struct list_elem* a, const struct list_elem* b, void* aux UNUSED);
 //PJT1-2
-bool cmp_priority(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);
+bool cmp_priority(const struct list_elem* a, const struct list_elem* b, void* aux UNUSED);
 void thread_check_preemption(void);
-bool cmp_priority_donate(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);
-void donate_priority (void);
+bool cmp_priority_donate(const struct list_elem* a, const struct list_elem* b, void* aux UNUSED);
+void donate_priority(void);
 void remove_thread_from_donation(struct lock* lock);
 void refresh_priority(void);
 //PJT1-3
 void cal_priority_mlfqs(struct thread* t);
 void cal_recent_cpu(struct thread* t);
 void cal_load_avg(void);
-void increment_recent_cpu (void);
+void increment_recent_cpu(void);
 void recal_recent_cpu(void);
 void recal_priority(void);
 //PJT1-4
