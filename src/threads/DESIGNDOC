@@ -33,13 +33,13 @@ SEUNGWOO PARK <merleawe@kaist.ac.kr>
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
 @threads/thread.h
-1. int wake_up_tick (struct thread 안의 멤버 변수)    
+int wake_up_tick (struct thread 안의 멤버 변수)    
     깨어나야할 tick을 저장해서, sleep_list에 있는 thread를 깨울 때 이용
     
 @threads/thread.c
-2. static struct list sleep_list
+static struct list sleep_list
     sleep_queue를 만들어 줌
-3. static int64_t min_value_of_ticks;
+static int64_t min_value_of_ticks;
     sleep_list 내부의 thread 들의 wake_up_tick 중 가장 작은 값을 저장하여, 이 이상의 tick에서 thread_awake가 일어나도록 함.
     
 
@@ -90,26 +90,103 @@ busy-waiting의 경우, 매우 비효율 적으로 진행이 되어, 많은 시�
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
+@ threads/thread.h
+struct thread
+{
+            ...
+    //PJT1-2
+    int init_priority;                          <-- thread가 priority를 양도 받았다가, 다시 반납할 때, 초기값을 기억하기 위함
+    struct lock* wait_on_lock;                  <-- thread가 얻고자 하는 lock
+    struct list donations;                      <-- priority를 나누어준 thread들의 list
+    struct list_elem donation_elem;             <-- list 관리를 위한 element
+    //PJT1-2 END
+            ...
+};
+
+
 >> B2: Explain the data structure used to track priority donation.
 >> Use ASCII art to diagram a nested donation.  (Alternately, submit a
 >> .png file.)
+
+위에 언급된 추가된 init_priority 및 list donations 등을 이용하여 priority donation을 구현함.
+nested donation의 경우 총 3개의 priority L,M,H의 thread가 있다고 하고, thread L이 lock A를 hold 하고, thread M이 lock B를 가지고 lock A를 요청하였으며,
+thread H가 lock B를 요청한 경우, 여러번의 단계적 donation이 일어나야 한다.
+
+이 경우, donate_priority() 함수로 구현하였으며, wait_on_lock->holder의 thread를 가져와서, holder의 priority에 donation을 해준다.
+for 문을 통하여, cur에 들어가는 thread를 holder로 변경해주며 for문을 돌고, 만약 wait_on_lock이 없다면 (즉, 요청한 lock이 없다면) donation할 것이 없으므로, for문을 탈출한다.
+
+1st. begin
+---------------                                      ---------------                                      --------------- 
+| thread L    |        lock A                        | thread M    |        lock B                        | thread H    |
+---------------  <---  holder                        ---------------  <---  holder                        --------------- 
+|priority = L |                                      |priority = M |                                      |priority = H |
+---------------                                      ---------------                                      --------------- 
+
+2nd. thread M이 L에게 lock A 요청 후, donate-priority
+---------------                                      ---------------                                      --------------- 
+| thread L    |        lock A <----wait_on_lock----  | thread M    |        lock B                        | thread H    |
+---------------  <---  holder                        ---------------  <---  holder                        --------------- 
+|priority = M |                                      |priority = M |                                      |priority = H |
+---------------                                      ---------------                                      --------------- 
+
+3rd. thread H가 M에게 lock B 요청, donate_priority
+---------------                                      ---------------                                      --------------- 
+| thread L    |        lock A <----wait_on_lock----  | thread M    |        lock B <----wait_on_lock----  | thread H    |
+---------------  <---  holder                        ---------------  <---  holder                        --------------- 
+|priority = H |                                      |priority = H |                                      |priority = H |
+---------------                                      ---------------                                      --------------- 
+
+4th. lock A 반환 (thread M 이 A 획득)
+---------------                                      ---------------                                      --------------- 
+| thread L    |        lock A                        | thread M    |        lock B <----wait_on_lock----  | thread H    |
+---------------        holder ------------------->   ---------------  <---  holder                        --------------- 
+|priority = L |                                      |priority = H |                                      |priority = H |
+---------------                                      ---------------                                      --------------- 
+
+5th. lock B 반환 및 그 후 종료
+---------------                                      ---------------                                      --------------- 
+| thread L    |                                      | thread M    |                                      | thread H    |
+---------------                                      ---------------                                      --------------- 
+|priority = L |                                      |priority = M |                                      |priority = H |
+---------------                                      ---------------                                      --------------- 
+
+
+
 
 ---- ALGORITHMS ----
 
 >> B3: How do you ensure that the highest priority thread waiting for
 >> a lock, semaphore, or condition variable wakes up first?
 
+list 자체를 priority를 비교하는 함수를 이용하여 배열함 (cmp_priority 및 list_insert_ordered 함수 이용)
+
 >> B4: Describe the sequence of events when a call to lock_acquire()
 >> causes a priority donation.  How is nested donation handled?
 
+위에서 언급한 donate_priority() 함수가 lock_acquire 안에 들어가있음. 이를 통해 nested donation을 handle 할 수 있음.
+lock_acquire 함수를 call하면, 
+우선, 해당 lock에 holder가 있는지 확인
+있다면, current thread의 wait_on_lock에 lock을 추가하고,
+해당 lock의 donation list에 current thread를 추가하며, (이 때, priority 순으로 정렬해서 넣어줌)
+그 후, donate_priority를 실행
+
+이후에 sema_down을 실행해서 lock을 점유할 때 까지 기다리며,
+점유 후, wait_on_lock을 지우고, lock의 holder를 current thread로 바꿔줌
+
+
 >> B5: Describe the sequence of events when lock_release() is called
 >> on a lock that a higher-priority thread is waiting for.
+
+lock_release가 실행되면, 해당 lock이 wait_on_list에 있는 thread를 donation list에서 제거하고, priority를 재정비 해준 다음
+lock의 holder를 비워주고, sema_up을 이용해 semaphore를 재정비 해준다.
 
 ---- SYNCHRONIZATION ----
 
 >> B6: Describe a potential race in thread_set_priority() and explain
 >> how your implementation avoids it.  Can you use a lock to avoid
 >> this race?
+
+
 
 ---- RATIONALE ----
 
