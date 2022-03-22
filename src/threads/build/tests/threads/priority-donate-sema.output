@@ -1,11 +1,11 @@
-qemu-system-i386 -device isa-debug-exit -drive file=/tmp/oHYYgwkIF3.dsk,format=raw,index=0,media=disk -m 4 -net none -nographic -monitor null
+qemu-system-i386 -device isa-debug-exit -drive file=/tmp/_04b6DYOvm.dsk,format=raw,index=0,media=disk -m 4 -net none -nographic -monitor null
 PiLo hda1
 Loading.........
 Kernel command line: -q run priority-donate-sema
 Pintos booting with 3,968 kB RAM...
 367 pages available in kernel pool.
 367 pages available in user pool.
-Calibrating timer...  701,235,200 loops/s.
+Calibrating timer...  691,404,800 loops/s.
 Boot complete.
 Executing 'priority-donate-sema':
 (priority-donate-sema) begin

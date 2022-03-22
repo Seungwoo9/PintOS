@@ -1,11 +1,11 @@
-qemu-system-i386 -device isa-debug-exit -drive file=/tmp/oejaR0ZwBc.dsk,format=raw,index=0,media=disk -m 4 -net none -nographic -monitor null
+qemu-system-i386 -device isa-debug-exit -drive file=/tmp/x2dT76vXEd.dsk,format=raw,index=0,media=disk -m 4 -net none -nographic -monitor null
 PiLo hda1
 Loading.........
 Kernel command line: -q run priority-donate-chain
 Pintos booting with 3,968 kB RAM...
 367 pages available in kernel pool.
 367 pages available in user pool.
-Calibrating timer...  675,840,000 loops/s.
+Calibrating timer...  684,851,200 loops/s.
 Boot complete.
 Executing 'priority-donate-chain':
 (priority-donate-chain) begin
@@ -48,8 +48,8 @@ Executing 'priority-donate-chain':
 (priority-donate-chain) main finishing with priority 0.
 (priority-donate-chain) end
 Execution of 'priority-donate-chain' complete.
-Timer: 31 ticks
-Thread: 0 idle ticks, 31 kernel ticks, 0 user ticks
+Timer: 32 ticks
+Thread: 0 idle ticks, 32 kernel ticks, 0 user ticks
 Console: 2636 characters output
 Keyboard: 0 keys pressed
 Powering off...
