@@ -19,6 +19,10 @@ SEUNGWOO PARK <merleawe@kaist.ac.kr>
 >> preparing your submission, other than the Pintos documentation, course
 >> text, lecture notes, and course staff.
 
+1. OSLAB homepage & Youtube channel
+2. lecture slide (Pintos_Part1_Thread _00~02)
+3. Q&A session (at piazza)
+
                  ALARM CLOCK
                  ===========
 
@@ -28,10 +32,22 @@ SEUNGWOO PARK <merleawe@kaist.ac.kr>
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
+@threads/thread.h
+1. int wake_up_tick (struct thread 안의 멤버 변수)    
+    깨어나야할 tick을 저장해서, sleep_list에 있는 thread를 깨울 때 이용
+    
+@threads/thread.c
+2. static struct list sleep_list
+    sleep_queue를 만들어 줌
+3. static int64_t min_value_of_ticks;
+    sleep_list 내의 thread의 wake_up_tick 중 가장 작은 값을 저장해, 깨워줘야하는 첫 tick 값을 저장
+
 ---- ALGORITHMS ----
 
 >> A2: Briefly describe what happens in a call to timer_sleep(),
 >> including the effects of the timer interrupt handler.
+
+timer_sleep() 함수가 call 되면, 
 
 >> A3: What steps are taken to minimize the amount of time spent in
 >> the timer interrupt handler?
@@ -147,14 +163,24 @@ the quarter.
 >> In your opinion, was this assignment, or any one of the three problems
 >> in it, too easy or too hard?  Did it take too long or too little time?
 
+혼자하기 어려웠으며, 오래걸렸습니다...
+
 >> Did you find that working on a particular part of the assignment gave
 >> you greater insight into some aspect of OS design?
+
+OS design에 관한 insight를 키우는 것에는 큰 도움이 되었습니다.
 
 >> Is there some particular fact or hint we should give students in
 >> future quarters to help them solve the problems?  Conversely, did you
 >> find any of our guidance to be misleading?
 
+처음에는 어떤 방향으로 해야하는지 아리송 했지만,
+Q&A를 통해서 알아나갔습니다.
+Piazza를 통해서, Q&A를 잘 해주시는 것 같습니다.
+
 >> Do you have any suggestions for the TAs to more effectively assist
 >> students, either for future quarters or the remaining projects?
+
+없습니다.
 
 >> Any other comments?
