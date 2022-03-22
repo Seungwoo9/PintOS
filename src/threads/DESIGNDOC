@@ -64,12 +64,13 @@ timer_interrupt handler에서 시간 소모를 최소화 함.
 >> A4: How are race conditions avoided when multiple threads call
 >> timer_sleep() simultaneously?
 
+interrupt 가 disable 일 때, list operation이 진행됨.
 
 
 >> A5: How are race conditions avoided when a timer interrupt occurs
 >> during a call to timer_sleep()?
 
-
+interrupt 가 disable 상태임.
 
 ---- RATIONALE ----
 
