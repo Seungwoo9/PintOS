@@ -237,21 +237,21 @@ ticks   A   B   C   A   B   C   to run
 -----  --  --  --  --  --  --   ------
  0      0   1   2  63  61  59   A
  4      4   1   2  62  61  59   A
- 8      8   1   2  61  61  59   A
-12     12   1   2  60  61  59   B
-16     12   5   2  60  60  59   A
-20     16   5   2  59  60  59   B
-24     16   9   2  59  59  59   A
-28     20   9   2  58  59  59   B
-32     20  13   2  58  58  59   C
-36     20  13   6  58  58  58   A
+ 8      8   1   2  61  61  59   B
+12      8   5   2  61  60  59   A
+16     12   5   2  60  60  59   B
+20     12   9   2  60  59  59   A
+24     16   9   2  59  59  59   C
+28     16   9   6  59  59  58   B
+32     16  13   6  59  58  58   A
+36     20  13   6  58  58  58   C
 
 >> C3: Did any ambiguities in the scheduler specification make values
 >> in the table uncertain?  If so, what rule did you use to resolve
 >> them?  Does this match the behavior of your scheduler?
 
 우선, 100tick에 1초로 계산하여, 초당 계산하는 것이 없었고, load_avg가 0일 때를 가정함.
-priority가 같아지는 경우가 생겨 모호해졌으며, 이 경우, nice의 정의를 따라 덜 nice한 것이 run되도록 하였음.
+priority가 같아지는 경우가 생겨 모호해졌으며, 이 경우, Least Recently Used Thread를 Run 하도록 가정함.
 
 
 >> C4: How is the way you divided the cost of scheduling between code
