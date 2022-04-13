@@ -128,9 +128,9 @@ struct thread
 #ifdef USERPROG
     ...
     //PJT2-4
-    struct semaphore child_lock;              <--
-    struct semaphore mem_lock;                <--
-    struct semaphore load_lock;               <-- 
+    struct semaphore child_lock;              <--  process_wait에서 child를 기다릴 때 쓸 semaphore
+    struct semaphore mem_lock;                <--  child_list에서 remove 되었는지 여부를 확인하기 위한 semaphore
+    struct semaphore load_lock;               <--  load시, 사용할 semaphore
     struct thread* parent;                    <-- parent thread 저장
     struct list child;                        <-- child thread의 list
     struct list_elem child_elem;              <-- child list 접근을 위한 elem
