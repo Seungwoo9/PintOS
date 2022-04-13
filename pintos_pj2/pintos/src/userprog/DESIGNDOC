@@ -181,12 +181,21 @@ read, write의 경우 fd를 첫 파라미터로 가져와서 해당 fd에 대해
 >> for a system call that only copies 2 bytes of data?  Is there room
 >> for improvement in these numbers, and how much?
 
+Least possible number of inspections: 1 (한 페이지 안에 4096byte가 모두 들어있을 경우)
+Greatest possible number of inspections: 4096 (4096byte가 다 따로따로 있을 경우)
+
+2 bytes의 data만 copy하는 경우
+Least possible number of inspections: 1 (한 페이지 안에 2byte가 모두 들어있을 경우)
+Greatest possible number of inspections: 2 (2byte가 page 2개에 걸쳐 있을 경우)
 
 
 >> B5: Briefly describe your implementation of the "wait" system call
 >> and how it interacts with process termination.
 
-
+wait system call이 일어나면 process_wait을 진행함.
+child_lock을 sema_down시켜 부모 process가 기다리게하고.
+이후, child process가 run을 마치고, exit을 하면 child_lock을 sema_up시켜, 부모 process가 다시 실행되도록 함.
+그 후, 해당되는 child process를 list_remove를 이용해, child list에서 제거.
 
 >> B6: Any access to user program memory at a user-specified address
 >> can fail due to a bad pointer value.  Such accesses must cause the
