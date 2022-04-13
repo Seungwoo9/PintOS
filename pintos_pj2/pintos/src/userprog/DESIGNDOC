@@ -236,7 +236,7 @@ child_lock을 sema_down시켜 부모 process가 기다리게하고.
 >> B9: Why did you choose to implement access to user memory from the
 >> kernel in the way that you did?
 
-
+떠오르는 아이디어 중 구현이 쉽게 가능한 부분을 고려하여 진행.
 
 >> B10: What advantages or disadvantages can you see to your design
 >> for file descriptors?
