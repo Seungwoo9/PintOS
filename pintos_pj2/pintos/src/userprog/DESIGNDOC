@@ -160,10 +160,19 @@ struct lock filesys_lock;
 >> Are file descriptors unique within the entire OS or just within a
 >> single process?
 
+single process 내에서, 각 thread마다 file descriptor table을 가짐 (single process 내에서 유니크 하다.)
+이런 file descriptor table을 thread 내에서 fd로 구현하였으며, 각 index별로 struct file* 을 지니며,
+file을 open할 때 마다, 각 thread의 fd[128] 중에서 index를 처음부터 끝까지 보며 NULL인 부분에 할당한다.
+
 ---- ALGORITHMS ----
 
 >> B3: Describe your code for reading and writing user data from the
 >> kernel.
+
+syscall.c 내부에서 syscall_handler 부분 안에 구현이 되어있음.
+esp값에서 system_call의 parameter 개수에 따라 순서대로 stack에서의 data를 kernel로 가져오며,
+check_user_vaddr 함수를 통해 user address인지 check한 후 가져옴.
+read, write의 경우 fd를 첫 파라미터로 가져와서 해당 fd에 대해서 진행이 됨.
 
 >> B4: Suppose a system call causes a full page (4,096 bytes) of data
 >> to be copied from user space into the kernel.  What is the least
@@ -172,8 +181,12 @@ struct lock filesys_lock;
 >> for a system call that only copies 2 bytes of data?  Is there room
 >> for improvement in these numbers, and how much?
 
+
+
 >> B5: Briefly describe your implementation of the "wait" system call
 >> and how it interacts with process termination.
+
+
 
 >> B6: Any access to user program memory at a user-specified address
 >> can fail due to a bad pointer value.  Such accesses must cause the
@@ -189,12 +202,16 @@ struct lock filesys_lock;
 >> paragraphs, describe the strategy or strategies you adopted for
 >> managing these issues.  Give an example.
 
+
+
 ---- SYNCHRONIZATION ----
 
 >> B7: The "exec" system call returns -1 if loading the new executable
 >> fails, so it cannot return before the new executable has completed
 >> loading.  How does your code ensure this?  How is the load
 >> success/failure status passed back to the thread that calls "exec"?
+
+
 
 >> B8: Consider parent process P with child process C.  How do you
 >> ensure proper synchronization and avoid race conditions when P
@@ -203,16 +220,29 @@ struct lock filesys_lock;
 >> terminates without waiting, before C exits?  After C exits?  Are
 >> there any special cases?
 
+
+
 ---- RATIONALE ----
 
 >> B9: Why did you choose to implement access to user memory from the
 >> kernel in the way that you did?
 
+
+
 >> B10: What advantages or disadvantages can you see to your design
 >> for file descriptors?
 
+장점 : struct thread 안에 file descriptor table과 file descriptor를 구현하여, 각 process당 fd를 관리가 가능.
+       fd[]의 숫자를 순차적으로 증가시켜서 빈 공간에 할당하여 구현이 용이
+       
+단점 : file access를 하지 않는 proces도 file descriptor table을 만들고 메모리 공간을 할당하기 때문에, 메모리 측면에서 비효율적.
+       fd[]의 max치를 constant하게 지정해 둠. (이 이상 증가 시 추가 알고리즘 필요)
+       
 >> B11: The default tid_t to pid_t mapping is the identity mapping.
 >> If you changed it, what advantages are there to your approach?
+
+바꾸지 않음.
+
 
                SURVEY QUESTIONS
                ================
@@ -226,12 +256,18 @@ the quarter.
 >> In your opinion, was this assignment, or any one of the three problems
 >> in it, too easy or too hard?  Did it take too long or too little time?
 
+굉장히 시간이 많이 걸리고 어려웠습니다.
+
 >> Did you find that working on a particular part of the assignment gave
 >> you greater insight into some aspect of OS design?
+
+일부분 이해가 된 듯.
 
 >> Is there some particular fact or hint we should give students in
 >> future quarters to help them solve the problems?  Conversely, did you
 >> find any of our guidance to be misleading?
+
+QnA session을 친절하게 진행해주셔서 도움이 되었습니다.
 
 >> Do you have any suggestions for the TAs to more effectively assist
 >> students, either for future quarters or the remaining projects?
