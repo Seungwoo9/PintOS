@@ -1,0 +1,239 @@
+             +--------------------------+
+             |          CS 140          |
+             | PROJECT 2: USER PROGRAMS |
+             |     DESIGN DOCUMENT      |
+             +--------------------------+
+
+---- GROUP ----
+
+>> Fill in the names and email addresses of your group members.
+
+Seungwoo Park <merleawe@kaist.ac.kr>
+
+
+---- PRELIMINARIES ----
+
+>> If you have any preliminary comments on your submission, notes for the
+>> TAs, or extra credit, please give them here.
+
+Signal handler 등을 포함한 project의 requirements 구현
+
+>> Please cite any offline or online sources you consulted while
+>> preparing your submission, other than the Pintos documentation, course
+>> text, lecture notes, and course staff.
+
+               ARGUMENT PASSING
+               ================
+
+---- DATA STRUCTURES ----
+
+>> A1: Copy here the declaration of each new or changed `struct' or
+>> `struct' member, global or static variable, `typedef', or
+>> enumeration.  Identify the purpose of each in 25 words or less.
+
+"userprog/process.c"
+
+tid_t
+process_execute (const char *file_name) 
+{
+  ...
+  char token[256];      //PJT2-3 <-- argument를 띄어쓰기 단위로 나눠서 저장하기 위한 임시 저장소.
+  ...
+}
+
+static void
+start_process (void *file_name_)
+{
+  ...
+  //PJT2-3
+  char token[256];                    <-- argument를 띄어쓰기 단위로 나눠서 저장하기 위한 임시 저장소.
+  parse_filename(file_name, token);
+  ...
+}
+
+int
+process_wait (tid_t child_tid UNUSED) <-- process_wait 구현
+{
+  ...
+  //PJT2-3
+  struct list_elem* e;                <-- list를 찾을 때, for 문을 위한 변수
+  struct thread* t = NULL;
+  int exit_status;
+  ... 
+}
+
+void construct_stack(char *file_name, void **esp) {
+	
+  char ** argv;                       <-- argument를 띄어쓰기로 나눠서 저장
+  int argc;                           <-- argument 개수 count
+  int total_len;                      <-- 4byte 기준으로 정렬하기 위한 길이 정보 저장 (for word-align)
+  char stored_file_name[256];
+  char *token;                         <-- file_name에서의 첫번째 인자 (띄어쓰기 기준으로 나눴을 때) 저장
+  char *last;                          <-- strtok_r을 행할 때, 띄어스기 이후를 기억하기 위한 
+  ...
+}
+
+
+---- ALGORITHMS ----
+
+>> A2: Briefly describe how you implemented argument parsing.  How do
+>> you arrange for the elements of argv[] to be in the right order?
+>> How do you avoid overflowing the stack page?
+
+strtok_r을 이용하여, delimiter로 띄어쓰기 (" ")를 이용하여, 그것을 기준으로 나누도록 설계
+띄어쓰기 기준으로 for문을 통해서 반복하여, argv[]에 각 string들을 저장하고, argc 카운트 값이 1씩 올라감.
+NULL 값이 나올 때 까지 진행.
+
+또한, stack에 push되는 과정을 같이 진행하였음.
+esp를 이용하였으며,
+위에서 만든 argv 값을 차례로 넣고, word-align을 위해, padding을 계산하여 넣음
+그 후, argv의 주소값과 argc 값을 넣고, 0의 fake return address를 마지막으로 넣어줌.
+
+---- RATIONALE ----
+
+>> A3: Why does Pintos implement strtok_r() but not strtok()?
+
+strtok_r은 strtok와 다르게 포인터를 사용하여 다음 위치에 대한 정보를 저장함.
+이를 통해서 race condition 방지.
+
+>> A4: In Pintos, the kernel separates commands into a executable name
+>> and arguments.  In Unix-like systems, the shell does this
+>> separation.  Identify at least two advantages of the Unix approach.
+
+커널로 넘어오는 bad argument를 방지할 수 있고, 이는 커널이 처리하지 않아도 됨으로써, 커널 자체의 용량을 가볍게 만들 수 있음.
+
+                 SYSTEM CALLS
+                 ============
+
+---- DATA STRUCTURES ----
+
+>> B1: Copy here the declaration of each new or changed `struct' or
+>> `struct' member, global or static variable, `typedef', or
+>> enumeration.  Identify the purpose of each in 25 words or less.
+
+"userprog/syscall.c"
+//PJT2-4
+struct file
+  {
+    struct inode *inode;        /* File's inode. */
+    off_t pos;                  /* Current position. */
+    bool deny_write;            /* Has file_deny_write() been called? */
+  };
+  
+"threads/thread.h"
+
+struct thread
+  {
+    ...
+#ifdef USERPROG
+    ...
+    //PJT2-4
+    struct semaphore child_lock;              <--
+    struct semaphore mem_lock;                <--
+    struct semaphore load_lock;               <-- 
+    struct thread* parent;                    <-- parent thread 저장
+    struct list child;                        <-- child thread의 list
+    struct list_elem child_elem;              <-- child list 접근을 위한 elem
+    int exit_status;                          <-- exit status 저장
+    int successfully_load;                    <-- load 성공했는지 여부 저장 
+    struct file* fd[128];                     <-- file_descriptor table
+    //PJT2-4
+    //PJT2-6
+    struct signal_PJ2 signal_PJ2[SIG_MAX];    <-- signal handler 관련 정보 저장
+    //PJT2-6
+#endif
+    ...
+  };
+  
+//PJT2-6
+struct signal_PJ2 {                           <-- signum 및 signal_handler 저장을 위한 struct
+    int signum;
+    void* signal_handler;
+};
+#define SIG_MAX 20	// just in case for modifying size of signal_PJ2
+//PJT2-6
+  
+  
+struct lock filesys_lock;
+
+>> B2: Describe how file descriptors are associated with open files.
+>> Are file descriptors unique within the entire OS or just within a
+>> single process?
+
+---- ALGORITHMS ----
+
+>> B3: Describe your code for reading and writing user data from the
+>> kernel.
+
+>> B4: Suppose a system call causes a full page (4,096 bytes) of data
+>> to be copied from user space into the kernel.  What is the least
+>> and the greatest possible number of inspections of the page table
+>> (e.g. calls to pagedir_get_page()) that might result?  What about
+>> for a system call that only copies 2 bytes of data?  Is there room
+>> for improvement in these numbers, and how much?
+
+>> B5: Briefly describe your implementation of the "wait" system call
+>> and how it interacts with process termination.
+
+>> B6: Any access to user program memory at a user-specified address
+>> can fail due to a bad pointer value.  Such accesses must cause the
+>> process to be terminated.  System calls are fraught with such
+>> accesses, e.g. a "write" system call requires reading the system
+>> call number from the user stack, then each of the call's three
+>> arguments, then an arbitrary amount of user memory, and any of
+>> these can fail at any point.  This poses a design and
+>> error-handling problem: how do you best avoid obscuring the primary
+>> function of code in a morass of error-handling?  Furthermore, when
+>> an error is detected, how do you ensure that all temporarily
+>> allocated resources (locks, buffers, etc.) are freed?  In a few
+>> paragraphs, describe the strategy or strategies you adopted for
+>> managing these issues.  Give an example.
+
+---- SYNCHRONIZATION ----
+
+>> B7: The "exec" system call returns -1 if loading the new executable
+>> fails, so it cannot return before the new executable has completed
+>> loading.  How does your code ensure this?  How is the load
+>> success/failure status passed back to the thread that calls "exec"?
+
+>> B8: Consider parent process P with child process C.  How do you
+>> ensure proper synchronization and avoid race conditions when P
+>> calls wait(C) before C exits?  After C exits?  How do you ensure
+>> that all resources are freed in each case?  How about when P
+>> terminates without waiting, before C exits?  After C exits?  Are
+>> there any special cases?
+
+---- RATIONALE ----
+
+>> B9: Why did you choose to implement access to user memory from the
+>> kernel in the way that you did?
+
+>> B10: What advantages or disadvantages can you see to your design
+>> for file descriptors?
+
+>> B11: The default tid_t to pid_t mapping is the identity mapping.
+>> If you changed it, what advantages are there to your approach?
+
+               SURVEY QUESTIONS
+               ================
+
+Answering these questions is optional, but it will help us improve the
+course in future quarters.  Feel free to tell us anything you
+want--these questions are just to spur your thoughts.  You may also
+choose to respond anonymously in the course evaluations at the end of
+the quarter.
+
+>> In your opinion, was this assignment, or any one of the three problems
+>> in it, too easy or too hard?  Did it take too long or too little time?
+
+>> Did you find that working on a particular part of the assignment gave
+>> you greater insight into some aspect of OS design?
+
+>> Is there some particular fact or hint we should give students in
+>> future quarters to help them solve the problems?  Conversely, did you
+>> find any of our guidance to be misleading?
+
+>> Do you have any suggestions for the TAs to more effectively assist
+>> students, either for future quarters or the remaining projects?
+
+>> Any other comments?
