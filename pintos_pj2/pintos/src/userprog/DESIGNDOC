@@ -211,6 +211,11 @@ child_lock을 sema_down시켜 부모 process가 기다리게하고.
 >> paragraphs, describe the strategy or strategies you adopted for
 >> managing these issues.  Give an example.
 
+system call을 실행할 때, check_user_vaddr을 이용하여, 모두 valid address인지 check함
+잘못된 영역을 참조했을 경우, exit system call을 진행하고, 모든 resource를 free해줌.
+
+또한, 파라미터로 들어오는 값들이 정상적인지를 체크하는 것을 각 system call마다 구현함.
+(open(), read(), write() 함수의 구현 부분 참조)
 
 
 ---- SYNCHRONIZATION ----
@@ -221,6 +226,8 @@ child_lock을 sema_down시켜 부모 process가 기다리게하고.
 >> success/failure status passed back to the thread that calls "exec"?
 
 
+load를 실행할 때, successfully_load로 구현한 변수에 해당 child의 load 성공유무를 저장함.
+추가로 필요한 semaphore를 이용하여, sema_down 및 sema_up을 활용하여 구현함.
 
 >> B8: Consider parent process P with child process C.  How do you
 >> ensure proper synchronization and avoid race conditions when P
@@ -229,7 +236,16 @@ child_lock을 sema_down시켜 부모 process가 기다리게하고.
 >> terminates without waiting, before C exits?  After C exits?  Are
 >> there any special cases?
 
+1. P calls wait(C) before C exits
+ semaphore를 사용해서 C가 종료할 때까지 P가 대기함. 이어서, exit에서 모든 리소스를 free시킴.
+    
+2. P calls wait(C) after C exits
+ P의 childlist에 C가 없으므로, wait() 함수에서 -1이 return. 위와 동일하게 exit에서 모든 리소스를 free시킴.
 
+3. P terminates without waiting, before C exits & 
+4. P terminates without waiting, after C exits
+ C의 parent가 없으므로, race condition이 없음. 위와 동일하게 추후, exit system call에서 모든 리소스를 free시킴.
+ 
 
 ---- RATIONALE ----
 
