@@ -94,7 +94,7 @@ void evict_victim() {
     {
     case VM_BIN:
         if (pagedir_is_dirty(page->thread->pagedir, page->vme->vaddr)) {
-            page->vme->swap_slot = swap_out(page->kaddr);
+            page->vme->swap_index = swap_out(page->kaddr);
             page->vme->type = VM_ANON;
         }
         break;
@@ -106,7 +106,7 @@ void evict_victim() {
         }
         break;
     case VM_ANON:
-        page->vme->swap_slot = swap_out(page->kaddr);
+        page->vme->swap_index = swap_out(page->kaddr);
         break;
     }
 

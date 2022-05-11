@@ -15,13 +15,13 @@ void swap_init() {
     lock_init(&swap_lock);
 }
 
-void swap_in(void* kaddr, size_t swap_slot) {
+void swap_in(void* kaddr, size_t swap_index) {
     ASSERT(kaddr != NULL);
     lock_acquire(&swap_lock);
-    ASSERT(bitmap_test(swap_bitmap, swap_slot));
-    bitmap_flip(swap_bitmap, swap_slot);
+    ASSERT(bitmap_test(swap_bitmap, swap_index));
+    bitmap_flip(swap_bitmap, swap_index);
 
-    block_sector_t sector_ofs = (swap_slot * PGSIZE) / BLOCK_SECTOR_SIZE;
+    block_sector_t sector_ofs = (swap_index * PGSIZE) / BLOCK_SECTOR_SIZE;
     block_sector_t idx;
     for (idx = 0; idx < (PGSIZE / BLOCK_SECTOR_SIZE); idx++) {
         block_read(swap_block, sector_ofs + idx, kaddr);
@@ -32,15 +32,15 @@ void swap_in(void* kaddr, size_t swap_slot) {
 
 size_t swap_out(void* kaddr) {
     ASSERT(kaddr != NULL);
-    size_t swap_slot;
+    size_t swap_index;
 
     lock_acquire(&swap_lock);
-    swap_slot = bitmap_scan_and_flip(swap_bitmap, 0, 1, false);
-    if (swap_slot == BITMAP_ERROR) {
+    swap_index = bitmap_scan_and_flip(swap_bitmap, 0, 1, false);
+    if (swap_index == BITMAP_ERROR) {
         PANIC("no frame can be evicted without allocating a swap slot, but swap is full\n");
     }
 
-    block_sector_t sector_ofs = (swap_slot * PGSIZE) / BLOCK_SECTOR_SIZE;
+    block_sector_t sector_ofs = (swap_index * PGSIZE) / BLOCK_SECTOR_SIZE;
     block_sector_t idx;
     for (idx = 0; idx < (PGSIZE / BLOCK_SECTOR_SIZE); idx++) {
         block_write(swap_block, sector_ofs + idx, kaddr);
@@ -48,5 +48,5 @@ size_t swap_out(void* kaddr) {
     }
     lock_release(&swap_lock);
 
-    return swap_slot;
+    return swap_index;
 }

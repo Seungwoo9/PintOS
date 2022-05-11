@@ -5,7 +5,7 @@
 #include <stddef.h>
 
 void swap_init(void);
-void swap_in(void* kaddr, size_t swap_slot);
+void swap_in(void* kaddr, size_t swap_index);
 size_t swap_out(void* kaddr);
 
 #endif /* vm/swap.h */

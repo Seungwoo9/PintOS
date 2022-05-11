@@ -19,7 +19,7 @@ struct vm_entry
     uint32_t zero_bytes;
     struct hash_elem elem;
     struct list_elem mmap_elem;
-    size_t swap_slot;
+    size_t swap_index;
 };
 
 struct page
