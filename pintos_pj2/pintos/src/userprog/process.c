@@ -709,7 +709,7 @@ handle_mm_fault(struct vm_entry* vme)
         break;
 
     case VM_ANON:
-        swap_in(page->kaddr, vme->swap_slot);
+        swap_in(page->kaddr, vme->swap_index);
         success = true;
         break;
 
