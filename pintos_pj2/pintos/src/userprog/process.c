@@ -152,8 +152,8 @@ process_exit(void)
     /* File Manipulation */
     file_close(cur->running_file);
     cur->running_file = NULL;
-    for (; cur->max_fdp1 > 2; cur->max_fdp1--)
-        process_close_file(cur->max_fdp1 - 1);
+    for (; cur->max_fd_count > 2; cur->max_fd_count--)
+        process_close_file(cur->max_fd_count - 1);
 
     free(cur->fdt);
 
@@ -653,11 +653,11 @@ int
 process_add_file(struct file* f)
 {
     struct thread* cur = thread_current();
-    ASSERT(cur->fdt && cur->max_fdp1 >= 2);
-    if (cur->max_fdp1 >= FDT_SIZE)
+    ASSERT(cur->fdt && cur->max_fd_count >= 2);
+    if (cur->max_fd_count >= FDT_SIZE)
         return -1;
-    (cur->fdt)[cur->max_fdp1++] = f;
-    return cur->max_fdp1 - 1;
+    (cur->fdt)[cur->max_fd_count++] = f;
+    return cur->max_fd_count - 1;
 }
 
 /* Finds file object with given file descriptor. */
@@ -666,7 +666,7 @@ struct file*
 {
     struct thread* cur = thread_current();
     ASSERT(cur->fdt != NULL);
-    if (fd < 0 || fd >= cur->max_fdp1)
+    if (fd < 0 || fd >= cur->max_fd_count)
         return NULL;
     return cur->fdt[fd];
 }
@@ -677,12 +677,12 @@ process_close_file(int fd)
 {
     struct thread* cur = thread_current();
     ASSERT(cur->fdt != NULL);
-    if (fd < 2 || fd >= cur->max_fdp1)
+    if (fd < 2 || fd >= cur->max_fd_count)
         return;
     file_close(cur->fdt[fd]);
     cur->fdt[fd] = NULL;
-    if (fd == cur->max_fdp1 - 1)
-        cur->max_fdp1--;
+    if (fd == cur->max_fd_count - 1)
+        cur->max_fd_count--;
 }
 
 /* Paging */
