@@ -96,49 +96,53 @@ virtual to physical mapping은 process의 page table마다 저장하고 반대 �
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
 		
-	/* vm/page.h */
+	// vm/page.h
 	struct vm_entry 
 	  {
 	    ...
-	    size_t swap_index; bitmap index for swap partition */
+	    size_t swap_index; // swap partition 이용 시, bitmap index 
 	    ...
 	  };
-	
 
-	/* vm/frame.h */
 	struct page
 	  {
-	    void *kaddr; /* physical address */
-	    struct thread* thread; /* thread to which it belongs */
-	    struct vm_entry* vme; /* vm_entry to which page frame is mapped */
-	    struct list_elem lru; /* list element for lru_list (list of page frame) */
-	    bool pinned; /* for page pinning */
+	    void *kaddr; 		// physical address
+	    struct thread* thread; 	// page가 속한 thread
+	    struct vm_entry* vme;	// 어떤 page frame이 mapping 되었는지
+	    struct list_elem lru; 	
+	    bool pinned; 		
 	  };
 	
-
-	/* vm/frame.c */
-	struct lock lru_lock; /* lock for shared variable lru_list */
-	struct list lru_list; /* list of page frame  */
-	struct list_elem *clock_hand; /* clock hand for clock algorithm */
-	
-
-	/* vm/swap.c */
-	static struct block *swap_dsk; /* block device for swap partition */
-	static struct bitmap *swap_map; /* bitmap to manage swap partition */
-	static struct lock swap_lock; /* lock to synchronize modification of swap bitmap */
 
 ---- ALGORITHMS ----
 
 >> B2: When a frame is required but none is free, some frame must be
 >> evicted.  Describe your code for choosing a frame to evict.
 
+page를 evict할 때, clock algorithm을 base로 구현함.
+LRU를 기반으로, LRU list를 활용함.
+
 >> B3: When a process P obtains a frame that was previously used by a
 >> process Q, how do you adjust the page table (and any other data
 >> structures) to reflect the frame Q no longer has?
 
+Swap에서 해당 경우가 발생할 수 있음.
+다른 프로세스의 frame이 할당되는 경우, Q의 프레임이 어떤 종류인지를 파악하고, dirty 여부를 확인한다.
+VM_BIN인 경우
+ dirty 일 때 : P의 프레임을 swap_out해서 스왑공간에 써둔다.
+ dirty가 아닐 때 : 그냥 페이지를 내보내고 Q가 사용한다. 
+VM_FILE인 경우
+ dirty 일 때 : P의 프레임을 해당 파일의 위치에 쓴다.
+ dirty가 아닐 때 : 그냥 페이지를 내보내고 Q가 사용한다.
+
+
 >> B4: Explain your heuristic for deciding whether a page fault for an
 >> invalid virtual address should cause the stack to be extended into
 >> the page that faulted.
+
+user address인지, stack size limit을 넘지 않는지, esp stack pointer에서 아래로 32 byte 이내인지 등의 여부를 따져
+조건이 만족되면 stack을 expand 한다.
+
 
 ---- SYNCHRONIZATION ----
 
@@ -147,21 +151,30 @@ virtual to physical mapping은 process의 page table마다 저장하고 반대 �
 >> textbook for an explanation of the necessary conditions for
 >> deadlock.)
 
+2개의 lock을 이용했지만, circular wait가 발생하지 않게 하여, deadlock을 방지
+
 >> B6: A page fault in process P can cause another process Q's frame
 >> to be evicted.  How do you ensure that Q cannot access or modify
 >> the page during the eviction process?  How do you avoid a race
 >> between P evicting Q's frame and Q faulting the page back in?
+
+eviction process는 lock을 가지고 있는 thread가 evict_page()를 execute할 수 있다.
+evict된 경우 lock을 다시 가져와야만 faultin page back을 할 수 있어 race condition이 방지 된다.
 
 >> B7: Suppose a page fault in process P causes a page to be read from
 >> the file system or swap.  How do you ensure that a second process Q
 >> cannot interfere by e.g. attempting to evict the frame while it is
 >> still being read in?
 
+swap_lock 및 filesys_lock을 이용해 synchronize 했음.
+
 >> B8: Explain how you handle access to paged-out pages that occur
 >> during system calls.  Do you use page faults to bring in pages (as
 >> in user programs), or do you have a mechanism for "locking" frames
 >> into physical memory, or do you use some other design?  How do you
 >> gracefully handle attempted accesses to invalid virtual addresses?
+
+pinning_page 및 unpinning_page를 이용해 buffer를 read, write 시, page를 pin 하고 unpin해줌
 
 ---- RATIONALE ----
 
@@ -172,6 +185,8 @@ virtual to physical mapping은 process의 page table마다 저장하고 반대 �
 >> where your design falls along this continuum and why you chose to
 >> design it this way.
 
+single lock을 이용하는 것 보다 multiple lock을 이용하여 구현하여 병렬적으로 이용이 가능했음.
+
 			 MEMORY MAPPED FILES
 			 ===================
 
@@ -181,14 +196,40 @@ virtual to physical mapping은 process의 page table마다 저장하고 반대 �
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
+	// threads/thread.h
+	struct thread
+	  {
+			...
+	    struct list mmap_list; // memory mapped file의 list
+	    int max_mapid_count;   // max mapid를 기록하기 위함
+			...
+	  };
+	
+
+	// vm/page.h
+	struct mmap_file 
+	  {
+	    int mapid; 			// memory mapped file의 id
+	    struct file *file;  	
+	    struct list_elem elem; 	
+	    struct list vme_list; 	// vm_entry의 list
+	  }
+
 ---- ALGORITHMS ----
 
 >> C2: Describe how memory mapped files integrate into your virtual
 >> memory subsystem.  Explain how the page fault and eviction
 >> processes differ between swap pages and other pages.
 
+mmap을 이용하면, PGSIZE 잔위로 vm_entry를 만들고, 그것을 mmap_file의 vme_list에 넣어줌.
+page_fault 발생시, address에 해당하는 vm_entry의 정보를 이용해 load하고,
+dirty인 경우, evict할 때, write back한 후, evict한다.
+
 >> C3: Explain how you determine whether a new file mapping overlaps
 >> any existing segment.
+
+file을 mmap하는 경우, 새로운 vm entry를 만들어서 mmap 한다.
+따라서 overlap되는 경우는 없음.
 
 ---- RATIONALE ----
 
@@ -199,6 +240,7 @@ virtual to physical mapping은 process의 page table마다 저장하고 반대 �
 >> implementation either does or does not share much of the code for
 >> the two situations.
 
+type만 다르고 load해오는 부분은 같기 때문에 거의 비슷하게 code를 share함.
 			   SURVEY QUESTIONS
 			   ================
 
