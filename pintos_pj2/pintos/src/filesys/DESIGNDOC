@@ -59,13 +59,16 @@ Seungwoo Park <merleawe@kaist.ac.kr>
 >> A2: What is the maximum size of a file supported by your inode
 >> structure?  Show your work.
 
+우선, Block 하나의 size는 512Byte이다.
 DIRECT Block의 entry가 123개, indirect block entry가 128개 이므로 123 + 128 + 128 * 128 (double indirect block) = 16635개 이다.
-하나의 block의 size는 512B이므로, max size는 512 * (123 + 128 + 128 * 128) = 8517120B 이다. (약 8.1MB)
+따라서, max size는 512 * (123 + 128 + 128 * 128) = 8517120B 이다. (약 8.1MB)
 
 ---- SYNCHRONIZATION ----
 
 >> A3: Explain how your code avoids a race if two processes attempt to
 >> extend a file at the same time.
+
+lock_for_ext을 이용해서, lock_acquire 및 lock_release를 이용하여 race condition을 방지함.
 
 >> A4: Suppose processes A and B both have file F open, both
 >> positioned at end-of-file.  If A reads and B writes F at the same
@@ -74,12 +77,17 @@ DIRECT Block의 entry가 123개, indirect block entry가 128개 이므로 123 + 
 >> nonzero data, A is not allowed to see all zeros.  Explain how your
 >> code avoids this race.
 
+atomic하게 구현함으로써 방지함.
+
 >> A5: Explain how your synchronization design provides "fairness".
 >> File access is "fair" if readers cannot indefinitely block writers
 >> or vice versa.  That is, many processes reading from a file cannot
 >> prevent forever another process from writing the file, and many
 >> processes writing to a file cannot prevent another process forever
 >> from reading the file.
+
+read 및 write를 할 때, buffer cache를 거쳐서 동작을 하게 변경됨.
+이 때, buffer_cache_lock이 존재하고, 이를 이용해서 scheduling이 이루어지므로, 상대적으로 fair함.
 
 ---- RATIONALE ----
 
@@ -88,6 +96,9 @@ DIRECT Block의 entry가 123개, indirect block entry가 128개 이므로 123 + 
 >> indirect blocks?  If not, why did you choose an alternative inode
 >> structure, and what advantages and disadvantages does your
 >> structure have, compared to a multilevel index?
+
+multilevel로 구현하였으며, (double_indirect_block) inode가 512Byte의 block 내에서, 큰 size의 file을 가리키는 것 또한 구현하기 위해
+multilevel을 이용하여 구현함.
 
 			    SUBDIRECTORIES
 			    ==============
@@ -98,10 +109,29 @@ DIRECT Block의 entry가 123개, indirect block entry가 128개 이므로 123 + 
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
+	//threads/thread.h
+	struct thread
+	{
+		...
+    		struct dir* working_dir;	// thread에서 현재 directory 정보를 저장
+		...
+	};
+	
+	//filesys/inode.c
+	struct inode_disk
+	{
+		...
+	    	//PJT4_subdirectory
+	    	uint32_t dir_or_regular;	// inode가 regular_file을 가리키는지, directory를 가리키는지 구분
+	 };
+
+
 ---- ALGORITHMS ----
 
 >> B2: Describe your code for traversing a user-specified path.  How
 >> do traversals of absolute and relative paths differ?
+
+이전에 file_name을 쪼갠것 처럼, parse_path를 이용해서, 
 
 ---- SYNCHRONIZATION ----
 
@@ -109,6 +139,8 @@ DIRECT Block의 entry가 123개, indirect block entry가 128개 이므로 123 + 
 >> only one of two simultaneous attempts to remove a single file
 >> should succeed, as should only one of two simultaneous attempts to
 >> create a file with the same name, and so on.
+
+lock을 이용해서 race condition 방지.
 
 >> B5: Does your implementation allow a directory to be removed if it
 >> is open by a process or if it is in use as a process's current
