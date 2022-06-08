@@ -15,6 +15,7 @@
 #ifdef USERPROG
 #include "userprog/process.h"
 #endif
+#include "filesys/directory.h"
 
 /* Random value for struct thread's `magic' member.
    Used to detect stack overflow.  See the big comment at the top
@@ -212,6 +213,10 @@ thread_create(const char* name, int priority,
 
     /* Stack Growth */
     t->user_esp = NULL;
+
+    //PJT4
+    if (thread_current()->working_dir != NULL) 
+        t->working_dir = dir_reopen(thread_current()->working_dir);
 
     /* Add to run queue. */
     thread_unblock(t);
@@ -479,11 +484,14 @@ init_thread(struct thread* t, const char* name, int priority)
     t->priority = priority;
     t->magic = THREAD_MAGIC;
 
-    /* System Calls */
+    // System Calls
     list_init(&t->child_list);
 
-    /* Memory Mapped Files */
+    // Memory Mapped Files
     list_init(&t->mmap_list);
+
+    //PJT4
+    t->working_dir = NULL;
 
     old_level = intr_disable();
     list_push_back(&all_list, &t->allelem);

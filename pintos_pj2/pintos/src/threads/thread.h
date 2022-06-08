@@ -122,6 +122,9 @@ struct thread
     /* Stack Growth */
     void* user_esp;
 
+    // PJT4_subdir
+    struct dir* working_dir;
+
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
 };
