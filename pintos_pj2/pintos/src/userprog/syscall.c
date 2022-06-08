@@ -13,6 +13,8 @@
 #include "userprog/pagedir.h"
 #include "devices/input.h"
 #include "vm/frame.h"
+#include "filesys/directory.h"
+#include "filesys/inode.h"
 
 extern struct lock lru_lock;    // pinning
 
@@ -35,8 +37,9 @@ static void syscall_handler(struct intr_frame* f) {
     uint32_t* esp = f->esp;
     uint32_t argv[3];
     memset(argv, 0, sizeof(uint32_t) * 3);
+#ifdef VM   // compile error if don't use this macro
     thread_current()->user_esp = (void*)esp;
-
+#endif
     switch (((uint32_t*)esp)[0])
     {
     case SYS_HALT:
@@ -96,6 +99,7 @@ static void syscall_handler(struct intr_frame* f) {
         get_argument(1, argv, esp);
         close(argv[0]);
         break;
+#ifdef VM
     case SYS_MMAP:
         get_argument(2, argv, esp);
         check_user_vaddr((void*)argv[1]);
@@ -104,6 +108,30 @@ static void syscall_handler(struct intr_frame* f) {
     case SYS_MUNMAP:
         get_argument(1, argv, esp);
         munmap(argv[0]);
+        break;
+#endif
+    case SYS_CHDIR:
+        get_argument(1, argv, esp);
+        check_user_vaddr((void*)argv[0]);
+        f->eax = chdir((const char*)argv[0]);
+        break;
+    case SYS_MKDIR:
+        get_argument(1, argv, esp);
+        check_user_vaddr((void*)argv[0]);
+        f->eax = mkdir((const char*)argv[0]);
+        break;
+    case SYS_READDIR:
+        get_argument(2, argv, esp);
+        check_user_vaddr((void*)argv[1]);
+        f->eax = readdir(argv[0], (char*)argv[1]);
+        break;
+    case SYS_ISDIR:
+        get_argument(1, argv, esp);
+        f->eax = isdir(argv[0]);
+        break;
+    case SYS_INUMBER:
+        get_argument(1, argv, esp);
+        f->eax = inumber(argv[0]);
         break;
     default:
         exit(-1);
@@ -189,10 +217,12 @@ int filesize(int fd) {
 }
 
 int read(int fd, void* buffer, unsigned length) {
+#ifdef VM
     const uint8_t* ptr = pg_round_down(buffer);
     for (; ptr < (uint8_t*)buffer + length; ptr += PGSIZE) {
         pinning_page(ptr);
     }
+#endif
     off_t nread = 0;
 
     if (fd == 0) {
@@ -216,17 +246,21 @@ int read(int fd, void* buffer, unsigned length) {
         lock_release(&filesys_lock);
     }
 
+#ifdef VM
     for (ptr = pg_round_down(buffer); ptr < (uint8_t*)buffer + length; ptr += PGSIZE) {
         unpinning_page(ptr);
     }
+#endif
     return nread;
 }
 
 int write(int fd, const void* buffer, unsigned length) {
+#ifdef VM
     const uint8_t* ptr = pg_round_down(buffer);
     for (; ptr < (uint8_t*)buffer + length; ptr += PGSIZE) {
         pinning_page(ptr);
     }
+#endif
     off_t nwritten = 0;
 
     if (fd == 1) {
@@ -241,9 +275,11 @@ int write(int fd, const void* buffer, unsigned length) {
         lock_release(&filesys_lock);
     }
 
+#ifdef VM
     for (ptr = pg_round_down(buffer); ptr < (uint8_t*)buffer + length; ptr += PGSIZE) {
         unpinning_page(ptr);
     }
+#endif
     return nwritten;
 }
 
@@ -264,6 +300,7 @@ void close(int fd) {
     process_close_file(fd);
 }
 
+#ifdef VM
 static void pinning_page(const void* vaddr) {
     ASSERT(vaddr != NULL);
     ASSERT(pg_ofs(vaddr) == 0);
@@ -384,4 +421,72 @@ void munmap(mapid_t mapid) {
             e = list_next(e);
         }
     }
+}
+#endif
+//PJT4
+
+bool chdir(const char* dir) {
+    lock_acquire(&filesys_lock);
+    bool success = filesys_chdir(dir);
+    lock_release(&filesys_lock);
+
+    return success;
+}
+
+bool mkdir(const char* dir) {
+    lock_acquire(&filesys_lock);
+    bool success = filesys_mkdir(dir);
+    lock_release(&filesys_lock);
+
+    return success;
+}
+
+bool readdir(int fd, char* name) {
+    struct file* f = process_get_file(fd);
+    ASSERT(f != NULL);
+
+    lock_acquire(&filesys_lock);
+    bool success = false;
+
+    struct inode* inode = file_get_inode(f);
+    struct dir* dir = NULL;
+    if (is_inode_for_dir(inode) && inode != NULL) {
+        dir = dir_open(inode_reopen(inode));
+        if (dir != NULL) {
+            off_t dir_ofs = file_tell(f);
+            success = readdir_at(dir, name, &dir_ofs);
+            if (success) {
+                file_seek(f, dir_ofs);
+            }
+        }
+    }
+
+    dir_close(dir);
+    lock_release(&filesys_lock);
+    return success;
+}
+
+bool isdir(int fd) {
+    struct file* f = process_get_file(fd);
+    ASSERT(f != NULL);
+
+    lock_acquire(&filesys_lock);
+    bool success = false;
+    struct inode* inode = file_get_inode(f);
+    if (inode != NULL)
+        success = is_inode_for_dir(inode);
+    lock_release(&filesys_lock);
+    return success;
+}
+
+int inumber(int fd) {
+    struct file* f = process_get_file(fd);
+    ASSERT(f != NULL);
+
+    lock_acquire(&filesys_lock);
+    struct inode* inode = file_get_inode(f);
+    ASSERT(inode != NULL);
+    int sector = (int)inode_get_inumber(inode);
+    lock_release(&filesys_lock);
+    return sector;
 }

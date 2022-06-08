@@ -19,10 +19,14 @@
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 #include "threads/malloc.h"
+#ifdef VM
 #include "vm/frame.h"
 #include "vm/swap.h"
+#endif
 
+#ifdef VM
 extern struct lock lru_lock;
+#endif
 
 /* File Manipulation */
 extern struct lock filesys_lock;
@@ -85,8 +89,10 @@ start_process(void* file_name_)
         argv[argc++] = token;
     }
 
+#ifdef VM   // compile error if don't use this macro
     /* Paging */
     init_vm(&thread_current()->vm);
+#endif
 
     /* Initialize interrupt frame and load executable. */
     memset(&if_, 0, sizeof if_);
@@ -165,6 +171,7 @@ process_exit(void)
         child->parent = NULL;
     }
 
+#ifdef VM
     /* Memory Mapped Files */
     for (e = list_begin(&cur->mmap_list); e != list_end(&cur->mmap_list);) {
         struct mmap_file* mmap_file = list_entry(e, struct mmap_file, elem);
@@ -173,6 +180,10 @@ process_exit(void)
 
     /* Paging */
     vm_destroy(&cur->vm);
+#endif
+
+    //PJT4_subdir
+    dir_close(cur->working_dir);
 
     /* Destroy the current process's page directory and switch back
        to the kernel-only page directory. */
@@ -466,6 +477,7 @@ load_segment(struct file* file, off_t ofs, uint8_t* upage,
     ASSERT(pg_ofs(upage) == 0);
     ASSERT(ofs % PGSIZE == 0);
 
+#ifdef VM
     while (read_bytes > 0 || zero_bytes > 0)
     {
         /* Calculate how to fill this page.
@@ -510,6 +522,35 @@ load_segment(struct file* file, off_t ofs, uint8_t* upage,
         vme->zero_bytes = page_zero_bytes;
         ASSERT(insert_vme(&thread_current()->vm, vme));
         ofs += page_read_bytes;
+#else
+    file_seek(file, ofs);
+    while (read_bytes > 0 || zero_bytes > 0)
+    {
+        /* Calculate how to fill this page.
+           We will read PAGE_READ_BYTES bytes from FILE
+           and zero the final PAGE_ZERO_BYTES bytes. */
+        size_t page_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;
+        size_t page_zero_bytes = PGSIZE - page_read_bytes;
+        /* Get a page of memory. */
+        uint8_t* kpage = palloc_get_page(PAL_USER);
+        if (kpage == NULL)
+            return false;
+
+        /* Load this page. */
+        if (file_read(file, kpage, page_read_bytes) != (int)page_read_bytes)
+        {
+            palloc_free_page(kpage);
+            return false;
+        }
+        memset(kpage + page_read_bytes, 0, page_zero_bytes);
+
+        /* Add the page to the process's address space. */
+        if (!install_page(upage, kpage, writable))
+        {
+            palloc_free_page(kpage);
+            return false;
+        }
+#endif
 
         /* Advance. */
         read_bytes -= page_read_bytes;
@@ -526,7 +567,7 @@ setup_stack(void** esp)
 {
     struct page* page;
     bool success = false;
-
+#ifdef VM
     lock_acquire(&lru_lock);
     page = lru_get_page(PAL_USER | PAL_ZERO);
     lock_release(&lru_lock);
@@ -540,10 +581,10 @@ setup_stack(void** esp)
                 exit(-1);
             }
             memset(vme, 0, sizeof(struct vm_entry));
-            vme->type = VM_ANON;
-            vme->vaddr = ((uint8_t*)PHYS_BASE) - PGSIZE;
             vme->loaded = true;
             vme->writable = true;
+            vme->type = VM_ANON;
+            vme->vaddr = ((uint8_t*)PHYS_BASE) - PGSIZE;
             ASSERT(insert_vme(&thread_current()->vm, vme));
             page->vme = vme;
         }
@@ -553,6 +594,18 @@ setup_stack(void** esp)
             lock_release(&lru_lock);
         }
     }
+#else
+    uint8_t* kpage;
+    kpage = palloc_get_page(PAL_USER | PAL_ZERO);
+    if (kpage != NULL)
+    {
+        success = install_page(((uint8_t*)PHYS_BASE) - PGSIZE, kpage, true);
+        if (success)
+            *esp = PHYS_BASE;
+        else
+            palloc_free_page(kpage);
+    }
+#endif
     return success;
 }
 
@@ -685,8 +738,8 @@ process_close_file(int fd)
         cur->max_fd_count--;
 }
 
-/* Paging */
 
+#ifdef VM
 /* Page fault handler function. */
 bool
 handle_mm_fault(struct vm_entry* vme)
@@ -812,3 +865,4 @@ expand_stack(void* vaddr, void* esp) {
     }
     return success;
 }
+#endif

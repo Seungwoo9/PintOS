@@ -165,7 +165,7 @@ page_fault(struct intr_frame* f)
 
     if (!not_present)
         exit(-1);
-
+#ifdef VM
     struct vm_entry* vme;
     vme = find_vme(fault_addr);
     if (vme == NULL) {
@@ -181,4 +181,19 @@ page_fault(struct intr_frame* f)
 
     if (!handle_mm_fault(vme))
         exit(-1);
+#else
+
+       /* System Calls */
+       exit(-1);
+
+       /* To implement virtual memory, delete the rest of the function
+          body, and replace it with code that brings in the page to
+          which fault_addr refers. */
+       printf ("Page fault at %p: %s error %s page in %s context.\n",
+               fault_addr,
+               not_present ? "not present" : "rights violation",
+               write ? "writing" : "reading",
+               user ? "user" : "kernel");
+       kill (f);
+#endif
 }

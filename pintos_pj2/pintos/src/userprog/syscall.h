@@ -34,8 +34,17 @@ void close(int fd);
 void sigaction (int signum, void (*handler) (void));
 void sendsig (int, int signum);
 void sched_yield (void);
-*/ //PJT3
+*/ 
+
+//PJT3
 int mmap(int fd, void* addr);
 void munmap(mapid_t mapid);
+
+//PJT4
+bool chdir(const char* dir);
+bool mkdir(const char* dir);
+bool readdir(int fd, char* name);
+bool isdir(int fd);
+int inumber(int fd);
 
 #endif /* userprog/syscall.h */
