@@ -28,23 +28,6 @@ void buffer_cache_init() {
     clock_hand = buffer_head_table;
 }
 
-void buffer_cache_finish() {
-    lock_acquire(&buffer_cache_lock);
-
-    int i;
-    for (i = 0; i < BUFFER_CACHE_ENTRIES; i++) {
-        struct buffer_head* buff_head = buffer_head_table + i;
-        flush_victim(buff_head);
-        free(buff_head->data);
-        buff_head->data = NULL;
-    }
-
-    free(buffer_head_table);
-    buffer_head_table = NULL;
-    clock_hand = NULL;
-    lock_release(&buffer_cache_lock);
-}
-
 void buffer_cache_read(block_sector_t sector, void* buffer, size_t size, int sector_ofs) {
     struct buffer_head* buff_head = lookup(sector);
 
@@ -78,6 +61,23 @@ void buffer_cache_write(block_sector_t sector, const void* buffer, size_t size, 
     buff_head->dirty = true;
     memcpy(buff_head->data + sector_ofs, buffer, size);
     lock_release(&buff_head->lock_buf);
+}
+
+void buffer_cache_finish() {
+    lock_acquire(&buffer_cache_lock);
+
+    int i;
+    for (i = 0; i < BUFFER_CACHE_ENTRIES; i++) {
+        struct buffer_head* buff_head = buffer_head_table + i;
+        flush_victim(buff_head);
+        free(buff_head->data);
+        buff_head->data = NULL;
+    }
+
+    free(buffer_head_table);
+    buffer_head_table = NULL;
+    clock_hand = NULL;
+    lock_release(&buffer_cache_lock);
 }
 
 static struct buffer_head* lookup(block_sector_t sector) {

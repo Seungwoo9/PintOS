@@ -18,8 +18,9 @@ struct buffer_head
 };
 
 void buffer_cache_init(void);
-void buffer_cache_finish(void);
 void buffer_cache_read(block_sector_t sector, void* buffer, size_t size, int sector_ofs);
 void buffer_cache_write(block_sector_t sector, const void* buffer, size_t size, int sector_ofs);
+void buffer_cache_finish(void);
+
 
 #endif
