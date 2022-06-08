@@ -17,4 +17,9 @@ bool filesys_create (const char *name, off_t initial_size);
 struct file *filesys_open (const char *name);
 bool filesys_remove (const char *name);
 
+//PJT4_subdir
+struct dir* parse_path(const char* dir_name, char* file_name);
+bool filesys_chdir(const char* dir_name);
+bool filesys_mkdir(const char* dir_name);
+
 #endif /* filesys/filesys.h */
